@@ -52,6 +52,7 @@ function App() {
   useEffect(() => {
     if (contract && provider) {
       fetchContractBalance();
+      fetchTransactionHistory();
     }
   }, [contract, provider]);
 
@@ -108,15 +109,15 @@ function App() {
           await window.ethereum.request({
             method: 'wallet_addEthereumChain',
             params: [{
-              chainId: '0x1F91',
-              chainName: 'Shardeum Sphinx 1.X',
+              chainId: '0x1F90',
+              chainName: 'Shardeum Unstablenet',
               nativeCurrency: {
                 name: 'SHM',
                 symbol: 'SHM',
                 decimals: 18,
               },
-              rpcUrls: ['https://sphinx.shardeum.org/'],
-              blockExplorerUrls: ['https://explorer-sphinx.shardeum.org/'],
+              rpcUrls: ['https://api-unstable.shardeum.org/'],
+              blockExplorerUrls: ['https://explorer-unstable.shardeum.org/'],
             }],
           });
         } catch (networkError) {
@@ -153,6 +154,82 @@ function App() {
       setContractBalance(ethers.formatEther(balance));
     } catch (error) {
       console.error('Error fetching contract balance:', error);
+    }
+  };
+
+  const fetchTransactionHistory = async () => {
+    try {
+      console.log('Fetching transaction history from blockchain...');
+
+      // Get current block number
+      const currentBlock = await provider.getBlockNumber();
+      const fromBlock = Math.max(0, currentBlock - 10000); // Look back 10000 blocks
+
+      console.log(`Searching from block ${fromBlock} to ${currentBlock}`);
+
+      // Fetch PaymentDisbursed events
+      const paymentFilter = contract.filters.PaymentDisbursed();
+      const paymentEvents = await contract.queryFilter(paymentFilter, fromBlock, currentBlock);
+
+      // Fetch FundsDeposited events
+      const depositFilter = contract.filters.FundsDeposited();
+      const depositEvents = await contract.queryFilter(depositFilter, fromBlock, currentBlock);
+
+      console.log('Payment events found:', paymentEvents.length);
+      console.log('Deposit events found:', depositEvents.length);
+
+      const allTransactions = [];
+
+      // Process payment events
+      for (const event of paymentEvents) {
+        try {
+          const block = await provider.getBlock(event.blockNumber);
+          const totalAmount = event.args.amounts.reduce((sum, amount) => sum + amount, 0n);
+
+          allTransactions.push({
+            type: 'Payroll',
+            recipients: event.args.recipients.length,
+            totalAmount: parseFloat(ethers.formatEther(totalAmount)),
+            timestamp: new Date(Number(block.timestamp) * 1000).toLocaleString(),
+            hash: event.transactionHash,
+            blockNumber: event.blockNumber
+          });
+        } catch (eventError) {
+          console.error('Error processing payment event:', eventError);
+        }
+      }
+
+      // Process deposit events
+      for (const event of depositEvents) {
+        try {
+          const block = await provider.getBlock(event.blockNumber);
+
+          allTransactions.push({
+            type: 'Deposit',
+            recipients: 1,
+            totalAmount: parseFloat(ethers.formatEther(event.args.amount)),
+            timestamp: new Date(Number(block.timestamp) * 1000).toLocaleString(),
+            hash: event.transactionHash,
+            blockNumber: event.blockNumber
+          });
+        } catch (eventError) {
+          console.error('Error processing deposit event:', eventError);
+        }
+      }
+
+      // Sort by block number (newest first)
+      allTransactions.sort((a, b) => b.blockNumber - a.blockNumber);
+
+      console.log('Total transactions loaded:', allTransactions.length);
+      setTransactions(allTransactions);
+
+      if (allTransactions.length > 0) {
+        toast.success(`Loaded ${allTransactions.length} transactions from blockchain`);
+      }
+
+    } catch (error) {
+      console.error('Error fetching transaction history:', error);
+      toast.error('Failed to load transaction history from blockchain');
     }
   };
 
