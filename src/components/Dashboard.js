@@ -138,7 +138,7 @@ const Dashboard = ({ contractBalance, shmPrice, transactions, onPageChange }) =>
           </div>
           <div className="market-item">
             <div className="market-label">Network</div>
-            <div className="market-value">Shardeum Sphinx</div>
+            <div className="market-value">Shardeum Unstablenet</div>
           </div>
           <div className="market-item">
             <div className="market-label">Status</div>
