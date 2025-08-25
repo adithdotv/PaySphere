@@ -164,7 +164,7 @@ const HistoryPage = ({ transactions, shmPrice }) => {
               <div className="transaction-footer">
                 <button 
                   className="view-explorer-btn"
-                  onClick={() => window.open(`https://explorer-sphinx.shardeum.org/transaction/${tx.hash}`, '_blank')}
+                  onClick={() => window.open(`https://explorer-unstable.shardeum.org/transaction/${tx.hash}`, '_blank')}
                 >
                   <span className="btn-icon">🔍</span>
                   View on Explorer
